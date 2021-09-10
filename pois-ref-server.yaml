@@ -90,25 +90,25 @@ Resources:
 
     DependsOn: S3Bucket
 
-  LambdaInvokePermissionAPIGateway:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt EsamProcessor.Arn
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/dashboard-ctrl"
-    DependsOn:
-      - MediaLiveControlFunctions
-
-  LambdaInvokePermissionAPIHandlerAPIGateway:
+  LambdaInvokePermissionPoisCtrl:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !GetAtt POISControl.Arn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/dashboard-cfg/*"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/pois/*"
     DependsOn:
-      - MediaLiveControlConfig
+      - POISControl
+
+  LambdaInvokePermissionEsam:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt EsamProcessor.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/esam"
+    DependsOn:
+      - EsamProcessor
 
   #####
   # DynamoDB
@@ -176,6 +176,7 @@ Resources:
       - LambdaRole
       - FileCopier
       - FileMover
+      - LambdaLayer
 
   POISControl:
     Type: AWS::Lambda::Function
@@ -202,6 +203,7 @@ Resources:
       - LambdaRole
       - FileCopier
       - FileMover
+      - LambdaLayer
 
   FileCopier:
     Type: AWS::Lambda::Function
@@ -269,12 +271,11 @@ Resources:
               # Create urllib3 pool manager
               http = urllib3.PoolManager()
 
-              # environment variables
-              bucket = os.environ['BUCKET']
-              apiendpoint = os.environ['APIENDPOINT']
-
               # Manifest File containning URL's on github
               cloudformation_manifest = "https://raw.githubusercontent.com/scunning1987/pois_reference_server/main/manifest.txt"
+
+              # Pull global env variable to variable
+              bucket = os.environ['BUCKET']
 
               # Get the manifest from GitHub
               get_response = http.request('GET', cloudformation_manifest)
@@ -397,7 +398,9 @@ Resources:
       Description: Lambda Layer containing Python library XMLtoDict
       CompatibleRuntimes:
         - Python 3.8
-      Content: !GetAtt FileMover.xmltodict
+      Content:
+        S3Bucket: !Ref S3Bucket
+        S3Key: !GetAtt FileMover.xmltodict
       LayerName: xmltodictlibrary
       LicenseInfo: https://raw.githubusercontent.com/martinblech/xmltodict/master/LICENSE
 
@@ -550,6 +553,8 @@ Resources:
       - ApiGateway
       - ResourcePOIS
       - ResourceEsam
+      - EsamResourceMethodPOST
+      - POISResourceMethodAny
 
   ApiStage:
     Type: AWS::ApiGateway::Stage
