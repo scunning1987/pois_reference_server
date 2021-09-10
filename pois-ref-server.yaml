@@ -424,7 +424,7 @@ Resources:
   ApiGateway:
     Type: AWS::ApiGateway::RestApi
     Properties:
-      #Name: !Sub ${AWS::StackName}-${AWS::StackId}
+      Name: POISReferenceServerAPI
       Description: REST API For POIS Control and data plane activities
       EndpointConfiguration:
         Types:
