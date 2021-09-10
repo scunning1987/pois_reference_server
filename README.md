@@ -29,3 +29,5 @@ The architecture consists of several AWS services and is deployed using a CloudF
 
 ![](Architecture-pois-ref-server.png?width=60pc&classes=border,shadow)
 
+## How to deploy
+Use [this CloudFormation template](pois-ref-server.yaml) to deploy the solution
