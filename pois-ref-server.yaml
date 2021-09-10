@@ -2,6 +2,10 @@
 #### Author : Scott Cunningham
 ####
 ####
+## To Do List:
+##     Create Layer : XMLTODICT
+##     ADD Layer to Both Lambdas
+
 ## Parameters - User Input
 Parameters:
 
@@ -81,14 +85,15 @@ Resources:
             Action:
               - dynamodb:*
             Resource:
-              - !GetAtt POISDatabase.Arn
+              - !GetAtt POISDatabaseChannel.Arn
+              - !GetAtt POISDatabaseSchedule.Arn
 
     DependsOn: S3Bucket
 
   LambdaInvokePermissionAPIGateway:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !GetAtt MediaLiveControlFunctions.Arn
+      FunctionName: !GetAtt EsamProcessor.Arn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/dashboard-ctrl"
@@ -98,59 +103,38 @@ Resources:
   LambdaInvokePermissionAPIHandlerAPIGateway:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !GetAtt MediaLiveControlConfig.Arn
+      FunctionName: !GetAtt POISControl.Arn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/dashboard-cfg/*"
     DependsOn:
       - MediaLiveControlConfig
 
-  LambdaInvokePermissionUIAccessProxy:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt UIAccessProxy.Arn
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/*/dashboard/*"
-    DependsOn:
-      - MediaLiveControlConfig
-
-  LambdaInvokePermissionS3:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt ThumbnailS3PutRename.Arn
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceAccount: !Ref 'AWS::AccountId'
-      SourceArn: !GetAtt S3Bucket.Arn
-    DependsOn:
-      - S3Bucket
-      - ThumbnailS3PutRename
-
-  LambdaInvokedByEventBridge:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt MediaLiveScheduleCleanup.Arn
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt DailyScheduleCleanup.Arn
-    DependsOn:
-      - MediaLiveScheduleCleanup
-      - DailyScheduleCleanup
-
   #####
   # DynamoDB
   #####
-  POISDatabase:
+  POISDatabaseSchedule:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub POIS-${AWS::StackName}
+      TableName: !Sub POIS-schedules-${AWS::StackName}
       BillingMode: PAY_PER_REQUEST
       KeySchema:
-        - AttributeName: client_id
+        - AttributeName: channelid
           KeyType: HASH
       AttributeDefinitions:
-        - AttributeName: client_id
+        - AttributeName: channelid
+          AttributeType: S
+
+  POISDatabaseChannel:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub POIS-channels-${AWS::StackName}
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: channelid
+          KeyType: HASH
+      AttributeDefinitions:
+        - AttributeName: channelid
           AttributeType: S
 
   #################
@@ -402,6 +386,17 @@ Resources:
       - S3Bucket
       - LambdaRole
       - S3AccessPolicy
+
+  LambdaLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      Description: Lambda Layer containing Python library XMLtoDict
+      CompatibleRuntimes:
+        - Python 3.8
+      Content: !GetAtt FileMover.xmltodict
+      LayerName: xmltodictlibrary
+      LicenseInfo: https://raw.githubusercontent.com/martinblech/xmltodict/master/LICENSE
+
 
     #################
     ## API Gateway
