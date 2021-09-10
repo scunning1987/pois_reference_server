@@ -163,6 +163,8 @@ Resources:
       Handler: index.lambda_handler
       Timeout: 10
       MemorySize: 10240
+      Layers:
+        - !Ref LambdaLayer
       Code:
         S3Bucket: !Ref S3Bucket
         S3Key: !GetAtt FileMover.esam-processor
@@ -184,6 +186,8 @@ Resources:
       Handler: index.lambda_handler
       Timeout: 10
       MemorySize: 10240
+      Layers:
+        - !Ref LambdaLayer
       Code:
         S3Bucket: !Ref S3Bucket
         S3Key: !GetAtt FileMover.pois-control
