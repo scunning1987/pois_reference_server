@@ -205,7 +205,7 @@ Resources:
       - LambdaRole
       - FileCopier
       - FileMover
-      - LambdaLayer
+      - LambdaLayerXMLtoDict
 
   FileCopier:
     Type: AWS::Lambda::Function
