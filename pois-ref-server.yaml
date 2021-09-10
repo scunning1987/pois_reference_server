@@ -170,7 +170,7 @@ Resources:
   ## Lambda
   #################
 
-  ESAMProcessor:
+  EsamProcessor:
     Type: AWS::Lambda::Function
     Properties:
       Description: Lambda to handle ESAM requests and responses
@@ -206,8 +206,6 @@ Resources:
       Environment:
         Variables:
           BUCKET: !Ref S3Bucket
-          CONFIG_KEY: !GetAtt FileMover.channel_map
-          TEMPLATE_KEY: !GetAtt FileMover.channel_map_template
       Tags:
         - Key: StackName
           Value: !Ref AWS::StackName
@@ -288,7 +286,7 @@ Resources:
               apiendpoint = os.environ['APIENDPOINT']
 
               # Manifest File containning URL's on github
-              cloudformation_manifest = "https://raw.githubusercontent.com/scunning1987/aws_projects/main/377/manifest.txt"
+              cloudformation_manifest = "https://raw.githubusercontent.com/scunning1987/pois_reference_server/main/manifest.txt"
 
               # Get the manifest from GitHub
               get_response = http.request('GET', cloudformation_manifest)
@@ -397,224 +395,13 @@ Resources:
       Environment:
         Variables:
           BUCKET: !Ref S3Bucket
-          APIENDPOINT: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/v1/dashboard-ctrl
       Tags:
         - Key: StackName
           Value: !Ref AWS::StackName
-        - Key: Version
-          Value: 3
     DependsOn:
       - S3Bucket
       - LambdaRole
       - S3AccessPolicy
-
-  ChannelMapUpdaterFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Description: Channel configuration API handler
-      Role: !GetAtt LambdaRole.Arn
-      Runtime: python3.8
-      Handler: index.lambda_handler
-      Timeout: 10
-      MemorySize: 10240
-      Code:
-        ZipFile: |
-          '''
-          Copyright (c) 2021 Scott Cunningham
-
-          Permission is hereby granted, free of charge, to any person obtaining a copy
-          of this software and associated documentation files (the "Software"), to deal
-          in the Software without restriction, including without limitation the rights
-          to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-          copies of the Software, and to permit persons to whom the Software is
-          furnished to do so, subject to the following conditions:
-
-          The above copyright notice and this permission notice shall be included in all
-          copies or substantial portions of the Software.
-
-          THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-          IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-          FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-          AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-          LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-          OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-          SOFTWARE.
-
-          Summary: This script is a custom resource to place the HTML pages and Lambda code into the destination bucket.
-
-          Original Author: Scott Cunningham
-          '''
-
-          import json
-          import logging
-          import boto3
-          import os
-          import urllib3
-          from urllib.parse import urlparse
-          from zipfile import ZipFile
-          import cfnresponse
-
-          LOGGER = logging.getLogger()
-          LOGGER.setLevel(logging.INFO)
-          MANIFESTMODIFY="True"
-
-          def lambda_handler(event, context):
-
-              ## Log the incoming event
-              LOGGER.info("Event : %s " % (event))
-
-              ## Create Response Data Dictionary for the CloudFormationn response
-              responseData = dict()
-
-              ## Initialize S3 boto3 client
-              s3 = boto3.client('s3')
-
-              # environment variables
-              bucket = os.environ['BUCKET']
-              s3_key = os.environ['CONFIG_KEY']
-              api_ctrl = os.environ['APICTRL']
-
-              LOGGER.info("Environment Variable : S3 Bucket : %s " % (bucket))
-              LOGGER.info("Environment Variable : S3 Key : %s " % (s3_key))
-              LOGGER.info("Environment Variable : API Ctrl : %s " % (api_ctrl))
-
-              # "RequestType": "Create"
-              if event['RequestType'] == "Create" or event['RequestType'] == "Update":
-                  # Get Channel Map JSON from S3
-                  LOGGER.info("Now getting Channel map json from S3")
-                  try:
-                      s3_response = s3.get_object(Bucket=bucket, Key=s3_key)
-                      LOGGER.info("Got object from S3")
-                  except Exception as e:
-                      LOGGER.error("Unable to get object from S3, got exception: %s" % (e))
-                      responseData['Status'] = "Unable to get object from S3, got exception: %s" % (e)
-                      return cfnresponse.send(event, context, "FAILED",responseData)
-                      raise Exception("Unable to get object from S3, got exception: %s" % (e))
-
-                  # print s3 response
-                  LOGGER.info("s3 object: %s " % (s3_response))
-
-                  # Edit json with deployment information
-                  s3_data = json.loads(s3_response['Body'].read())
-                  s3_data['control_api_endpoint_url'] = api_ctrl
-                  api_endpoint_parse = urlparse(api_ctrl)
-                  s3_data['control_api_endpoint_host_header'] = api_endpoint_parse.netloc
-
-                  content_type = "application/json"
-
-                  # Put S3 Object back to bucket with changes
-                  LOGGER.info("Now putting Channel map json back to S3")
-                  try:
-                      s3_response = s3.put_object(Body=json.dumps(s3_data), Bucket=bucket, Key=s3_key,ContentType=content_type, CacheControl='no-cache')
-                      LOGGER.info("Put object to S3")
-                      responseData['copy'] = s3_key
-                  except Exception as e:
-                      LOGGER.error("Unable to get object from S3, got exception: %s" % (e))
-                      responseData['Status'] = "Unable to get object from S3, got exception: %s" % (e)
-                      return cfnresponse.send(event, context, "FAILED",responseData)
-                      raise Exception("Unable to get object from S3, got exception: %s" % (e))
-
-              else: # DELETE
-                  LOGGER.info("Nothing to do when DELETE stack command is used")
-
-
-              responseData['Status'] = "SUCCESS"
-              cfnresponse.send(event, context, "SUCCESS",responseData)
-              return responseData
-
-      Environment:
-        Variables:
-          BUCKET: !Ref S3Bucket
-          CONFIG_KEY: !GetAtt FileMover.channel_map
-          APICTRL: !Sub https://${ApiGateway}-${VPCEndpoint}.execute-api.${AWS::Region}.amazonaws.com/${ApiStage}/dashboard-ctrl
-      Tags:
-        - Key: StackName
-          Value: !Ref AWS::StackName
-        - Key: Version
-          Value: 2
-    DependsOn:
-      - ApiGateway
-
-
-  S3BucketNotificationLambda:
-    Type: 'AWS::Lambda::Function'
-    Properties:
-      Handler: index.lambda_handler
-      Role: !GetAtt LambdaRole.Arn
-      Code:
-        ZipFile: |
-
-          from __future__ import print_function
-          import json
-          import boto3
-          import cfnresponse
-
-          SUCCESS = "SUCCESS"
-          FAILED = "FAILED"
-
-          print('Loading function')
-          s3 = boto3.resource('s3')
-
-          def lambda_handler(event, context):
-              print("Received event: " + json.dumps(event, indent=2))
-              responseData={}
-              try:
-                  if event['RequestType'] == 'Delete':
-                      print("Request Type:",event['RequestType'])
-                      Bucket=event['ResourceProperties']['Bucket']
-                      delete_notification(Bucket)
-                      print("Sending response to custom resource after Delete")
-                  elif event['RequestType'] == 'Create' or event['RequestType'] == 'Update':
-                      print("Request Type:",event['RequestType'])
-                      LambdaArn=event['ResourceProperties']['LambdaArn']
-                      Bucket=event['ResourceProperties']['Bucket']
-                      Prefix=event['ResourceProperties']['Prefix'].rsplit("/",1)[0]
-                      object = s3.Object(Bucket,Prefix+'/status.txt')
-                      object.put(Body='status thumbnails directory')
-                      add_notification(LambdaArn, Bucket, Prefix)
-                      object.delete()
-                      responseData={'Bucket':Bucket}
-                      print("Sending response to custom resource")
-                  responseStatus = 'SUCCESS'
-              except Exception as e:
-                  print('Failed to process:', e)
-                  responseStatus = 'FAILED'
-                  responseData = {'Failure': 'Something bad happened : %s .' % (e)}
-              cfnresponse.send(event, context, responseStatus, responseData)
-
-          def add_notification(LambdaArn, Bucket, Prefix):
-              bucket_notification = s3.BucketNotification(Bucket)
-              response = bucket_notification.put(
-                NotificationConfiguration={
-                  'LambdaFunctionConfigurations': [
-                    {
-                        'LambdaFunctionArn': LambdaArn,
-                        'Events': [
-                            's3:ObjectCreated:Put'
-                        ],
-                        'Filter':{'Key':{'FilterRules':[{'Name':'prefix','Value':Prefix}]}}
-                    }
-                  ]
-                }
-              )
-              print("event notification put response: %s " % (response))
-              print("Put request completed....")
-
-          def delete_notification(Bucket):
-              bucket_notification = s3.BucketNotification(Bucket)
-              response = bucket_notification.put(
-                  NotificationConfiguration={}
-              )
-              print("Delete request completed....")
-      Runtime: python3.6
-      Timeout: 50
-    DependsOn:
-      - S3Bucket
-      - LambdaRole
-      - S3AccessPolicy
-      - ThumbnailS3PutRename
-      - FileMover
-
 
     #################
     ## API Gateway
@@ -623,96 +410,49 @@ Resources:
   ApiGateway:
     Type: AWS::ApiGateway::RestApi
     Properties:
-      Name: !Sub ${AWS::StackName}-emlctrl-api-handler
-      Description: !Sub API Handler [${AWS::StackName}
-      BinaryMediaTypes:
-        - '*/*'
+      Name: !Sub ${AWS::StackName}-${AWS::StackId}
+      Description: REST API For POIS Control and data plane activities
       EndpointConfiguration:
         Types:
-          - PRIVATE
-        VpcEndpointIds:
-          - !Ref VPCEndpoint
-      Policy: !Sub
-        |-
-        {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": "*",
-                    "Action": "execute-api:Invoke",
-                    "Resource": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:*/*"
-                },
-                {
-                    "Effect": "Deny",
-                    "Principal": "*",
-                    "Action": "execute-api:Invoke",
-                    "Resource": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:*/*",
-                    "Condition": {
-                        "StringNotEquals": {
-                            "aws:SourceVpc": "${VpcToDeployInto}"
-                        }
-                    }
-                }
-            ]
-        }
+          - REGIONAL
 
       Tags:
         - Key: StackName
           Value: !Ref AWS::StackName
 
-  ProxyPlusResourceCtrl:
+  ResourcePOIS:
     Type: AWS::ApiGateway::Resource
     Properties:
       ParentId: !GetAtt ApiGateway.RootResourceId
-      PathPart: 'dashboard-ctrl'
+      PathPart: 'pois'
       RestApiId: !Ref ApiGateway
     DependsOn:
       - ApiGateway
 
-  ProxyPlusResourceCfgRoot:
+  ResourceEsam:
     Type: AWS::ApiGateway::Resource
     Properties:
       ParentId: !GetAtt ApiGateway.RootResourceId
-      PathPart: 'dashboard-cfg'
+      PathPart: 'esam'
       RestApiId: !Ref ApiGateway
     DependsOn:
       - ApiGateway
 
-  UIResourceRoot:
+  ProxyPlusResourcePOIS:
     Type: AWS::ApiGateway::Resource
     Properties:
-      ParentId: !GetAtt ApiGateway.RootResourceId
-      PathPart: 'dashboard'
-      RestApiId: !Ref ApiGateway
-    DependsOn:
-      - ApiGateway
-
-  ProxyPlusResourceUIProxy:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      ParentId: !Ref UIResourceRoot
+      ParentId: !Ref ResourcePOIS
       PathPart: '{proxy+}'
       RestApiId: !Ref ApiGateway
     DependsOn:
       - ApiGateway
 
-  ProxyPlusResourceCfgProxy:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      ParentId: !Ref ProxyPlusResourceCfgRoot
-      PathPart: '{proxy+}'
-      RestApiId: !Ref ApiGateway
-    DependsOn:
-      - ApiGateway
-
-  AnyMethod:
+  POISResourceMethodAny:
     Type: AWS::ApiGateway::Method
     Properties:
       AuthorizationType: NONE
       HttpMethod: ANY
       Integration:
-        #Credentials: !GetAtt ApiGatewayRole.Arn
         IntegrationHttpMethod: POST
         IntegrationResponses:
           - StatusCode: '200'
@@ -722,24 +462,23 @@ Resources:
           - - 'arn:aws:apigateway:'
             - !Ref 'AWS::Region'
             - :lambda:path/2015-03-31/functions/
-            - !GetAtt MediaLiveControlConfig.Arn
+            - !GetAtt POISControl.Arn
             - /invocations
       MethodResponses:
         - StatusCode: 200
           ResponseModels:
             application/json: !Ref EmptyApiModel
-      ResourceId: !Ref ProxyPlusResourceCfgProxy
+      ResourceId: !Ref ProxyPlusResourcePOIS
       RestApiId: !Ref ApiGateway
     DependsOn:
       - ApiGateway
 
-  UIMethods:
+  EsamResourceMethodPOST:
     Type: AWS::ApiGateway::Method
     Properties:
       AuthorizationType: NONE
-      HttpMethod: ANY
+      HttpMethod: POST
       Integration:
-        #Credentials: !GetAtt ApiGatewayRole.Arn
         IntegrationHttpMethod: POST
         IntegrationResponses:
           - StatusCode: '200'
@@ -749,63 +488,13 @@ Resources:
           - - 'arn:aws:apigateway:'
             - !Ref 'AWS::Region'
             - :lambda:path/2015-03-31/functions/
-            - !GetAtt UIAccessProxy.Arn
-            - /invocations
-      ResourceId: !Ref ProxyPlusResourceUIProxy
-      RestApiId: !Ref ApiGateway
-    DependsOn:
-      - ApiGateway
-
-  GetMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      AuthorizationType: NONE
-      HttpMethod: GET
-      Integration:
-        #Credentials: !GetAtt ApiGatewayRole.Arn
-        IntegrationHttpMethod: POST
-        IntegrationResponses:
-          - StatusCode: '200'
-        Type: AWS_PROXY
-        Uri: !Join
-          - ''
-          - - 'arn:aws:apigateway:'
-            - !Ref 'AWS::Region'
-            - :lambda:path/2015-03-31/functions/
-            - !GetAtt MediaLiveControlFunctions.Arn
+            - !GetAtt EsamProcessor.Arn
             - /invocations
       MethodResponses:
         - StatusCode: 200
           ResponseModels:
             application/json: !Ref EmptyApiModel
-      ResourceId: !Ref ProxyPlusResourceCtrl
-      RestApiId: !Ref ApiGateway
-    DependsOn:
-      - ApiGateway
-
-  PutMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      AuthorizationType: NONE
-      HttpMethod: PUT
-      Integration:
-        #Credentials: !GetAtt ApiGatewayRole.Arn
-        IntegrationHttpMethod: POST
-        IntegrationResponses:
-          - StatusCode: '200'
-        Type: AWS_PROXY
-        Uri: !Join
-          - ''
-          - - 'arn:aws:apigateway:'
-            - !Ref 'AWS::Region'
-            - :lambda:path/2015-03-31/functions/
-            - !GetAtt MediaLiveControlFunctions.Arn
-            - /invocations
-      MethodResponses:
-        - StatusCode: 200
-          ResponseModels:
-            application/json: !Ref EmptyApiModel
-      ResourceId: !Ref ProxyPlusResourceCtrl
+      ResourceId: !Ref ResourceEsam
       RestApiId: !Ref ApiGateway
     DependsOn:
       - ApiGateway
@@ -836,7 +525,7 @@ Resources:
             method.response.header.Access-Control-Allow-Headers: false
             method.response.header.Access-Control-Allow-Methods: false
             method.response.header.Access-Control-Allow-Origin: true
-      ResourceId: !Ref ProxyPlusResourceCtrl
+      ResourceId: !Ref ProxyPlusResourcePOIS
       RestApiId: !Ref ApiGateway
     DependsOn:
       - ApiGateway
@@ -859,10 +548,9 @@ Resources:
       Description: Production Deployment of Api Endpoint
       RestApiId: !Ref ApiGateway
     DependsOn:
-      - AnyMethod
-      - GetMethod
-      - PutMethod
       - ApiGateway
+      - ResourcePOIS
+      - ResourceEsam
 
   ApiStage:
     Type: AWS::ApiGateway::Stage
@@ -873,81 +561,19 @@ Resources:
     DependsOn:
       - ApiGateway
 
-    #################
-    ## VPC
-    #################
-
-  VPCEndpoint:
-    Type: AWS::EC2::VPCEndpoint
-    Properties:
-      ServiceName: !Sub com.amazonaws.${AWS::Region}.execute-api
-      PrivateDnsEnabled: true
-      SubnetIds: !Ref SubnetToDeployApiInterface
-      VpcId: !Ref VpcToDeployInto
-      VpcEndpointType : Interface
-      SecurityGroupIds: !Ref InterfaceEndpointSecurityGroups
-
-    #################
-    ## EventBridge
-    #################
-
-  DailyScheduleCleanup:
-    Type: AWS::Events::Rule
-    Properties:
-      Description: This Event Rule will run at midnight every night to cleanup schedule events in MediaLive Channels that are part of the workflow
-      Name: MediaLiveScheduleCleanup
-      RoleArn: !GetAtt LambdaRole.Arn
-      State: ENABLED
-      ScheduleExpression: cron(0 0 * * ? *)
-      Targets:
-        - Arn: !GetAtt MediaLiveScheduleCleanup.Arn
-          Id: LambdaForMediaLiveCleanup
-          RetryPolicy:
-            MaximumRetryAttempts: 4
-            MaximumEventAgeInSeconds: 600
-    DependsOn:
-      - MediaLiveScheduleCleanup
-      - LambdaRole
-
 #################################
 # Outputs
 #################################
 
 Outputs:
-  DashboardUrl:
+  POISControlUI:
     Description: Dashboard URL for MediaLive control
-    #Value: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/${FileMover.ui}
-    #Value: !Sub https://${CloudFrontDistribution.DomainName}/${FileMover.ui}
-    Value: !Sub https://${ApiGateway}-${VPCEndpoint}.execute-api.${AWS::Region}.amazonaws.com/${ApiStage}/dashboard/${S3Bucket}/${FileMover.ui}
+    Value: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/${FileMover.ui}
 
-  APIEndpointURLGetSample:
-    Description: API Endpoint for getting sample configuration, method - GET
-    #Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ApiStage}/${ProxyPlusResourceCfgRoot.PathPart}/template
-    Value: !Join
-      - ''
-      - - 'https://'
-        - !Ref ApiGateway
-        - '-'
-        - !Ref VPCEndpoint
-        - '.execute-api.'
-        - !Ref 'AWS::Region'
-        - '.amazonaws.com/'
-        - !Ref ApiStage
-        - '/dashboard-cfg/template'
+  APIForScheduleIngest:
+    Description: This is the API endpoint to get/put/delete schedule for SCTE35 triggered switching
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ApiStage}/pois/schedule
 
-  APIEndpointURLGetConfig:
-    Description: API Endpoint for getting existing configuration, method - GET
-    Value: !Sub https://${ApiGateway}-${VPCEndpoint}.execute-api.${AWS::Region}.amazonaws.com/${ApiStage}/dashboard-cfg/existing
-
-  APIEndpointURLPutConfig:
-    Description: API Endpoint for updating existing configuration, method - PUT
-    Value: !Sub https://${ApiGateway}-${VPCEndpoint}.execute-api.${AWS::Region}.amazonaws.com/${ApiStage}/dashboard-cfg/update
-
-  ProxyThumbnailToS3PathTemplate:
-    Description: For the multiviewer, each proxy MediaLive channel should output a thumbnail to this location. Take note of the jpg location as it will be required in the channel_map.json. DO NOT PUT AN EXTENSION IN THE NAME IN MEDIALIVE OR A NAME MODIFIER
-    Value: !Sub s3://${S3Bucket}/status_thumbnails/[thumbnail-name]
-
-  #APIEndpointURLCTRL:
-  #  Description: API Endpoint to control the MediaLive channels. This URL is needed when updating the config
-  #  Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ApiStage}/dashboard-ctrl
-
+  ESAMEndpoint:
+    Description: This is the ESAM endpoint to configure in your encoders SCC URL field
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ApiStage}/esam
