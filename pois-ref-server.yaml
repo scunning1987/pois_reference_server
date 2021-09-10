@@ -164,7 +164,8 @@ Resources:
       Timeout: 10
       MemorySize: 10240
       Layers:
-        - !Ref LambdaLayer
+        - !Ref LambdaLayerThreeFive
+        - !Ref LambdaLayerXMLtoDict
       Code:
         S3Bucket: !Ref S3Bucket
         S3Key: !GetAtt FileMover.esam-processor
@@ -176,7 +177,8 @@ Resources:
       - LambdaRole
       - FileCopier
       - FileMover
-      - LambdaLayer
+      - LambdaLayerThreeFive
+      - LambdaLayerXMLtoDict
 
   POISControl:
     Type: AWS::Lambda::Function
@@ -188,7 +190,7 @@ Resources:
       Timeout: 10
       MemorySize: 10240
       Layers:
-        - !Ref LambdaLayer
+        - !Ref LambdaLayerXMLtoDict
       Code:
         S3Bucket: !Ref S3Bucket
         S3Key: !GetAtt FileMover.pois-control
@@ -392,10 +394,10 @@ Resources:
       - LambdaRole
       - S3AccessPolicy
 
-  LambdaLayer:
+  LambdaLayerXMLtoDict:
     Type: AWS::Lambda::LayerVersion
     Properties:
-      Description: Lambda Layer containing Python library XMLtoDict
+      Description: Lambda Layer containing Python library XMLtoDict - XML Parser
       CompatibleRuntimes:
         - python3.8
       Content:
@@ -404,6 +406,16 @@ Resources:
       LayerName: xmltodictlibrary
       LicenseInfo: https://raw.githubusercontent.com/martinblech/xmltodict/master/LICENSE
 
+  LambdaLayerThreeFive:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      Description: Lambda Layer containing Python library threefive - SCTE parser
+      CompatibleRuntimes:
+        - python3.8
+      Content:
+        S3Bucket: !Ref S3Bucket
+        S3Key: !GetAtt FileMover.threefive
+      LayerName: threefivelibrary
 
     #################
     ## API Gateway
@@ -412,12 +424,11 @@ Resources:
   ApiGateway:
     Type: AWS::ApiGateway::RestApi
     Properties:
-      Name: !Sub ${AWS::StackName}-${AWS::StackId}
+      #Name: !Sub ${AWS::StackName}-${AWS::StackId}
       Description: REST API For POIS Control and data plane activities
       EndpointConfiguration:
         Types:
           - REGIONAL
-
       Tags:
         - Key: StackName
           Value: !Ref AWS::StackName

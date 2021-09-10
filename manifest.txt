@@ -3,3 +3,4 @@ https://raw.githubusercontent.com/scunning1987/pois_reference_server/main/esam-p
 https://raw.githubusercontent.com/scunning1987/pois_reference_server/main/pois-control.py
 https://raw.githubusercontent.com/scunning1987/pois_reference_server/main/xmltodict.zip
 https://raw.githubusercontent.com/scunning1987/pois_reference_server/main/ui.html
+https://raw.githubusercontent.com/scunning1987/pois_reference_server/main/threefive.zip
