@@ -18,11 +18,11 @@ The functionality includes:
     * modify certain characteristics:
         * example: web_delivery_not_allowed
             * be aware that this may add more metadata to payload that needs to be taken into consideration
-        * Adding/modifying upid value
+        * Adding/modifying segmentation_upid value
 * SCTE35 driven archives
-    * cool
+    * Utilizing the Elemental Live API (requires public facing Elemental Live IP or NAT proxy)
 * SCTE35 input switching
-    * Synchronous (schedule checked)
+    * Synchronous using inbound SCTE35 messages (Source switch logged in schedule stored in database)
 
 ## Architecture
 The architecture consists of several AWS services and is deployed using a CloudFormation template.
