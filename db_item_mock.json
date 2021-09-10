@@ -1,0 +1,25 @@
+{
+  "channelid": "channel1",
+  "default_behavior": "noop",
+  "esam_version": "2016",
+  "rules": {
+    "1": {
+      "type": "delete",
+      "property": "splice_command_type",
+      "value": "5",
+      "operator": "="
+    },
+    "2": {
+      "type": "delete",
+      "property": "splice_command_type",
+      "value": "5",
+      "operator": "="
+    },
+    "3": {
+      "type": "delete",
+      "property": "splice_command_type",
+      "value": "5",
+      "operator": "="
+    }
+  }
+}
