@@ -4,7 +4,6 @@ import datetime
 import logging
 import math
 import os
-import requests
 import xmltodict
 
 LOGGER = logging.getLogger()
