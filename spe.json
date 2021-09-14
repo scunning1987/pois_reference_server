@@ -1,0 +1,33 @@
+{
+  "SignalProcessingEvent": {
+    "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+    "@xmlns:sig": "urn:cablelabs:md:xsd:signaling:3.0",
+    "@xsi:schemaLocation": "urn:cablelabs:iptvservices:esam:xsd:signal:1 OC-SP-ESAM-API-I03-Signal.xsd",
+    "@xmlns": "urn:cablelabs:iptvservices:esam:xsd:signal:1",
+    "AcquiredSignal": {
+      "@acquisitionPointIdentity": "channel1",
+      "@acquisitionSignalID": "ffcd7def-bbd7-e7b0-ffff-5de975c726d0",
+      "@acquisitionTime": "2021-09-11T03:39:48.337Z",
+      "@zoneIdentity": "",
+      "sig:UTCPoint": {
+        "@utcPoint": "2021-09-11T03:39:48.337Z"
+      },
+      "sig:BinaryData": {
+        "@signalType": "SCTE35",
+        "#text": "/DAlAAAAAsrYAP/wFAUAAAABf+/+ACjJaP4AFJlwAAEBAQAA/XeB3g=="
+      },
+      "sig:StreamTimes": {
+        "sig:StreamTime": [
+          {
+            "@timeType": "HLS",
+            "@timeValue": "181467000"
+          },
+          {
+            "@timeType": "PTS",
+            "@timeValue": "181467000"
+          }
+        ]
+      }
+    }
+  }
+}
