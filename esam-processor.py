@@ -33,16 +33,6 @@ def lambda_handler(event, context):
             response_main_elements_attributes[key] = spe[key]
 
 
-    ''' common namespace headers
-    xsi:schemaLocation="urn:cablelabs:iptvservices:esam:xsd:signal:1 OC-SP-ESAM- API-I0x-Signal.xsd"
-    xmlns="urn:cablelabs:iptvservices:esam:xsd:signal:1"
-    xmlns:sig="urn:cablelabs:md:xsd:signaling:3.0"
-    xmlns:core="urn:cablelabs:md:xsd:core:3.0
-    xmlns:content="urn:cablelabs:md:xsd:content:3.0"
-    xmlns:common="urn:cablelabs:iptvservices:esam:xsd:common:1"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    '''
-
     # Extract acquired signal parameters
     acq_signal = spe['AcquiredSignal']
 
@@ -99,28 +89,45 @@ def lambda_handler(event, context):
         resp_signal['sig:BinaryData']['#text'] = sig_binary_data
         return resp_signal
 
-    def spn_replace(sig_new_binary_data):
+    def spn_replace(sig_binary_data):
 
         # parse scte
 
-        '''
+
         scte_35_cue = threefive.Cue(sig_binary_data)
         scte_35_cue.decode()
 
 
         cue_dict = scte_35_cue.get()
 
+
+        cue_dict['command']['break_duration'] = 60.0
+
+
         newcue = Cue()
+
+
 
         newcue.load(cue_dict)
 
-        #newcue.encode()
-        '''
+
+        newcue_binary = str(newcue.encode())[2:-1]
 
 
         # Build Response Signal
         resp_signal = dict()
 
+        resp_signal['@action'] = "noop"
+        resp_signal['@acquisitionPointIdentity'] = acquisition_point_id
+        resp_signal['@acquisitionSignalID'] = acquisition_signal_id
+        resp_signal['@acquisitionTime'] = acquisition_time
+        resp_signal['sig:UTCPoint'] = {}
+        resp_signal['sig:UTCPoint']['@utcPoint'] = sig_utc_point
+        resp_signal['sig:BinaryData'] = {}
+        resp_signal['sig:BinaryData']['@signalType'] = newcue_binary
+        resp_signal['sig:BinaryData']['#text'] = sig_binary_data
+
+        '''
         # A REPLACE example
         resp_signal['@action'] = "replace"
         resp_signal['@acquisitionPointIdentity'] = acquisition_point_id
@@ -139,8 +146,7 @@ def lambda_handler(event, context):
         resp_signal['sig:SCTE35PointDescriptor']['sig:SegmentationDescriptorInfo']['@segmentsExpected'] = "1"
         resp_signal['sig:SCTE35PointDescriptor']['sig:SegmentationDescriptorInfo']['@duration'] = "PT0M30S"
         resp_signal['sig:StreamTimes'] = sig_stream_times
-
-        return resp_signal
+        '''
 
     if action == "delete":
         resp_signal = spn_delete()
@@ -158,7 +164,7 @@ def lambda_handler(event, context):
     spn['SignalProcessingNotification'] = response_main_elements_attributes
     spn['SignalProcessingNotification']['ResponseSignal'] = resp_signal
     spn['SignalProcessingNotification']['ConditioningInfo'] = {}
-    spn['SignalProcessingNotification']['ConditioningInfo']['@duration'] = "PT0M30S"
+    #spn['SignalProcessingNotification']['ConditioningInfo']['@duration'] = "PT0M30S"
 
 
     # convert payload to xml for return
