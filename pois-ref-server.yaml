@@ -213,6 +213,8 @@ Resources:
       Environment:
         Variables:
           BUCKET: !Ref S3Bucket
+          CHANNELDB: !Ref POISDatabaseChannel
+          SCHEDULEDB: !Ref POISDatabaseSchedule
       Tags:
         - Key: StackName
           Value: !Ref AWS::StackName
