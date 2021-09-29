@@ -185,6 +185,10 @@ Resources:
       Code:
         S3Bucket: !Ref S3Bucket
         S3Key: !GetAtt FileMover.esam-processor
+      Environment:
+        Variables:
+          CHANNELDB: !Ref POISDatabaseChannel
+          SCHEDULEDB: !Ref POISDatabaseSchedule
       Tags:
         - Key: StackName
           Value: !Ref AWS::StackName
