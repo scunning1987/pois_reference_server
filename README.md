@@ -24,9 +24,9 @@ The functionality includes:
         * example: web_delivery_not_allowed
             * be aware that this may add more metadata to payload that needs to be taken into consideration
         * Adding/modifying segmentation_upid value
-* SCTE35 driven archives
+* SCTE35 driven archives *Will be supported at a later date, integrating with AWS Elemental Live*
     * Utilizing the Elemental Live API (requires public facing Elemental Live IP or NAT proxy)
-* SCTE35 input switching
+* SCTE35 input switching *Will be supported at a later date, integrating with AWS Elemental Live*
     * Synchronous using inbound SCTE35 messages (Source switch logged in schedule stored in database)
 
 ## Architecture
