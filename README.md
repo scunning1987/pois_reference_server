@@ -29,5 +29,9 @@ The architecture consists of several AWS services and is deployed using a CloudF
 
 ![](Architecture-pois-ref-server.png?width=60pc&classes=border,shadow)
 
+For OTT workflows, AWS Elemental Live needs to contribute the ESAM conditioned stream to AWS. Then through MediaConnect, MediaLive and MediaPackage/MediaStore can the OTT package be generated.
+
+![](Architecture-pois-ref-server-aws-video.png?width=60pc&classes=border,shadow)
+
 ## How to deploy
 Use [this CloudFormation template](pois-ref-server.yaml) to deploy the solution
