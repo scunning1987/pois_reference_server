@@ -38,6 +38,88 @@ def lambda_handler(event, context):
     exceptions = []
     exceptions.clear()
 
+    # Properties supported for SCTE35 binary replace
+    threefive_scte_format = dict()
+    threefive_scte_format['info_section'] = {
+        'table_id':'int',
+        'section_syntax_indicator':'bool',
+        'private':'bool',
+        'sap_type':'int',
+        'sap_details':'',
+        'protocol_version':'int',
+        'pts_adjustment':'float',
+        'splice_command_type':'int'
+    }
+    threefive_scte_format['command'] = {
+        'command_type':'int',
+        'time_specified_flag':'bool',
+        'pts_time':'float',
+        'break_auto_return':'bool',
+        'break_duration':'float',
+        'splice_event_id':'int',
+        'splice_event_cancel_indicator':'',
+        'out_of_network_indicator':'bool',
+        'program_splice_flag':'bool',
+        'duration_flag':'bool',
+        'splice_immediate_flag':'bool',
+        'unique_program_id':'int',
+        'avail_num':'int',
+        'avail_expected':'int'
+    }
+    threefive_scte_format['descriptors'] = {
+        'segmentation_event_id':'',
+        'segmentation_event_cancel_indicator':'',
+        'program_segmentation_flag':'bool',
+        'segmentation_duration_flag':'bool',
+        'delivery_not_restricted_flag':'bool',
+        'web_delivery_allowed_flag':'bool',
+        'no_regional_blackout_flag':'bool',
+        'archive_allowed_flag':'bool',
+        'device_restrictions':'int',
+        'segmentation_upid_type':'int',
+        'segmentation_upid':'int',
+        'segmentation_type_id':'int',
+        'segment_num':'int',
+        'segments_expected':'int'
+    }
+
+    def dict_path(dicttopopulate,my_dict):
+        for k,v in my_dict.items():
+
+            value_type = list(my_dict[k].keys())[0]
+
+            if value_type == "M":
+                value = my_dict[k][value_type]
+
+                for i in range(0,len(value)):
+                    dynamodb_item_m = dict()
+                    dict_path(dynamodb_item_m,value)
+                    v = dynamodb_item_m
+
+                value.update(dynamodb_item_m)
+                dicttopopulate.update({k:value})
+
+            elif value_type == "S":
+                value = my_dict[k][value_type]
+                dicttopopulate.update({k:value})
+
+            elif value_type == "L": # list
+                value = my_dict[k][value_type]
+
+                for i in range(0,len(value)):
+                    dynamodb_item_list = dict()
+                    dict_path(dynamodb_item_list,value[i])
+
+                    value[i] = dynamodb_item_list
+
+                dicttopopulate.update({k:value})
+            elif k == "M":
+
+                dynamodb_item_m = dict()
+                dict_path(dynamodb_item_m,v)
+                v = dynamodb_item_m
+                dicttopopulate.update(v)
+
     # Response Structure
     def clientResponse(status_code,response_message):
         response_json = {
@@ -102,6 +184,12 @@ def lambda_handler(event, context):
                 return clientResponse(502,exceptions)
             else:
                 LOGGER.info("Returning response to client containing channnels")
+                for i in range(0,len(channels_information)):
+                    channels_information[i]
+                    channel_information_json = dict()
+                    dict_path(channel_information_json,channels_information[i])
+
+                    channels_information[i] = channel_information_json
                 return clientResponse(200,channels_information)
 
         elif "/pois/channels/" in event['path']:
@@ -131,7 +219,12 @@ def lambda_handler(event, context):
                         channel_information = {"Status":"Channel does not exist"}
                         return clientResponse(200,channel_information)
                     else:
-                        return clientResponse(200,channel_information['Item'])
+
+                        channel_information_json = dict()
+                        dict_path(channel_information_json,channel_information['Item'])
+
+                        #return clientResponse(200,channel_information['Item'])
+                        return clientResponse(200,channel_information_json)
 
         else:
             exceptions.append({"Status":"The path you sent is not a supported api, please see the documentation for list of supported api paths"})
@@ -168,6 +261,11 @@ def lambda_handler(event, context):
 
                 default_behaviors = ["noop","delete"]
 
+                valid_properties = []
+                for key,value in threefive_scte_format.items():
+                    for value in threefive_scte_format[key]:
+                        valid_properties.append(value)
+
                 if payload['default_behavior'] not in default_behaviors:
                     return clientResponse(502,{"status":"default_behavior value must be one of - noop , delete"})
 
@@ -194,48 +292,27 @@ def lambda_handler(event, context):
                         if esamrule['condition']['operator'] not in ['=','>','<','-','!=']:
                             return clientResponse(502,{"status":"malformed request body, esam rule operator must be one of = , > , < , - , != "})
 
-                        supported_properties = [
-                            "pts_adjustment",
-                            "splice_command_type",
-                            "name",
-                            "time_specified_flag",
-                            "pts_time",
-                            "break_auto_return",
-                            "break_duration",
-                            "splice_event_id",
-                            "splice_event_cancel_indicator",
-                            "out_of_network_indicator",
-                            "program_splice_flag",
-                            "duration_flag",
-                            "splice_immediate_flag",
-                            "unique_program_id",
-                            "avail_num",
-                            "avail_expected",
-                            "delivery_not_restricted_flag",
-                            "web_delivery_allowed_flag",
-                            "no_regional_blackout_flag",
-                            "device_restrictions",
-                            "segmentation_duration",
-                            "segmentation_upid_type",
-                            "segmentation_type_id",
-                            "segmentation_upid"
-                        ]
-
-
-                        if esamrule['condition']['operator'] not in supported_properties:
-                            clientResponse(502,{"status":"malformed request body, esam rule property must be one of: %s " % (supported_properties)})
+                        #if esamrule['condition']['operator'] not in supported_properties:
+                        #    clientResponse(502,{"status":"malformed request body, esam rule property must be one of: %s " % (supported_properties)})
 
                         if esamrule['type'] == "replace":
                             if not isinstance(esamrule['replace_params'], list):
-                                clientResponse(502,{"status":"malformed request body, esam rule replace_params must be of type list"})
+                                return clientResponse(502,{"status":"malformed request body, esam rule replace_params must be of type list"})
+
+                            if esamrule['condition']['property'] not in valid_properties:
+                                return clientResponse(502,{"status":"malformed request body, esam condition property is %s, must be one of %s " % (esamrule['condition']['property'],valid_properties)})
 
                             for replace_param in esamrule['replace_params']:
 
                                 replace_property = list(replace_param.keys())[0]
 
-                                if replace_property not in supported_properties:
-                                    clientResponse(502,{"status":"malformed request body, esam rule replace_param properties must be one of %s " % (supported_properties)})
+                                if replace_property not in valid_properties:
 
+                                    return clientResponse(502,{"status":"malformed request body, esam rule replace_param is %s, must be one of %s " % (replace_property,valid_properties)})
+
+                        if esamrule['type'] == "delete":
+                            if esamrule['condition']['property'] not in valid_properties:
+                                return clientResponse(502,{"status":"malformed request body, esam condition property is %s, must be one of %s " % (esamrule['condition']['property'],valid_properties)})
 
                 ##### VALIDATION END
                 # If we get here then we can write the item to the Db
@@ -322,5 +399,7 @@ def lambda_handler(event, context):
         else:
             exceptions.append({"Status":"The path you sent is not a supported api, please see the documentation for list of supported api paths"})
             return clientResponse(502,exceptions)
+
+
 
     return clientResponse(502,{"status":"method not supported"})
