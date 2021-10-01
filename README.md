@@ -2,7 +2,7 @@
 ## Release Notes
 | Date         | Version | Update Notes |
 |--------------|---------|--------------|
-| 2020-06-08   | 1.0.27  | Initial release containing support for ad rules only. API configuration only - See API section for details
+| 2020-09-30   | 1.0.27  | Initial release containing support for ad rules only. API configuration only - See API section for details
 
 ## Overview
 This is a POIS reference server capable of interacting with a transcoder using ESAM protocol.
