@@ -45,8 +45,11 @@ def lambda_handler(event, context):
         'avail_expected':'int'
     }
     threefive_scte_format['descriptors'] = {
-        'segmentation_event_id':'',
-        'segmentation_event_cancel_indicator':'',
+        'tag':'int',
+        'descriptor_length':'int',
+        'identifier':'str',
+        'segmentation_event_id':'int',
+        'segmentation_event_cancel_indicator':'bool',
         'program_segmentation_flag':'bool',
         'segmentation_duration_flag':'bool',
         'delivery_not_restricted_flag':'bool',
@@ -58,7 +61,8 @@ def lambda_handler(event, context):
         'segmentation_upid':'int',
         'segmentation_type_id':'int',
         'segment_num':'int',
-        'segments_expected':'int'
+        'segments_expected':'int',
+        'provider_avail_id':'int'
     }
 
     # initialize BOTO3 Client for Dynamodb
@@ -305,6 +309,7 @@ def lambda_handler(event, context):
         custom_status_code['@classCode'] = 2
         custom_status_code['core:Note'] = "Unable to retrieve channel config from POIS"
 
+
     # check if rules present
     # iterate through rules
     # process any rule that evaluates to true
@@ -360,11 +365,13 @@ def lambda_handler(event, context):
                         action = "replace"
 
                         rule_params = rule['replace_params']
+                        descriptors_dict = dict()
                         for replace_param_number in range(0,len(rule_params)):
                             rule_param = rule_params[replace_param_number]
                             r_key = list(rule_param.keys())[0]
                             r_value = value_type_validator(r_key,rule_param[r_key])
                             #r_header = ""
+
 
                             for property_header in threefive_scte_format:
                                 if r_key in threefive_scte_format[property_header]:
@@ -376,15 +383,21 @@ def lambda_handler(event, context):
 
                             else:
                                 # replace property in scte35 dict
-
-                                scte_35_dict[r_header][r_key] = r_value
+                                if not isinstance(scte_35_dict[r_header],list):
+                                    scte_35_dict[r_header][r_key] = r_value
+                                else:
+                                    descriptors_dict.update({r_key:r_value})
+                                    #scte_35_dict[r_header].append(r_key+":"+str(r_value))
                                 custom_status_code_rule_match += "rule %s replace param %s filled ." % (str(r),str(replace_param_number))
                                 if '@classCode' in custom_status_code:
                                     if custom_status_code['@classCode'] != 2:
                                         custom_status_code['@classCode'] = 3
                                 else:
                                     custom_status_code['@classCode'] = 3
+                        # add to descriptors
 
+                    scte_35_dict['descriptors'] = [descriptors_dict]
+                    #return scte_35_dict
                     # encode scte35
                     newcue = Cue()
                     newcue.load(scte_35_dict)
@@ -401,10 +414,12 @@ def lambda_handler(event, context):
                         custom_status_code['core:Note'] = "Unable to encode new SCTE35, using default behavior"
 
                 else:
+                    action = dynamodb_to_json['default_behavior']
                     custom_status_code['@classCode'] = 3
                     custom_status_code['core:Note'] = "No rule match at POIS, using default behavior"
 
                 scte35notdeleted = False
+
 
     ##
     ## Build ESAM Response

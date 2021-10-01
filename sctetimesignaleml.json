@@ -1,0 +1,37 @@
+{
+  "actionName": "scte352",
+  "scheduleActionStartSettings": {
+    "immediateModeScheduleActionStartSettings": {
+      "time": "2021-10-01T15:03:16.491"
+    }
+  },
+  "scheduleActionSettings": {
+    "scte35TimeSignalSettings": {
+      "scte35Descriptors": [
+        {
+          "scte35DescriptorSettings": {
+            "segmentationDescriptorScte35DescriptorSettings": {
+              "segmentationEventId": 1,
+              "segmentationCancelIndicator": "SEGMENTATION_EVENT_NOT_CANCELED",
+              "deliveryRestrictions": {
+                "webDeliveryAllowedFlag": "WEB_DELIVERY_NOT_ALLOWED",
+                "noRegionalBlackoutFlag": "NO_REGIONAL_BLACKOUT",
+                "archiveAllowedFlag": "ARCHIVE_NOT_ALLOWED",
+                "deviceRestrictions": "RESTRICT_GROUP0"
+              },
+              "segmentationDuration": 2700000,
+              "segmentationUpidType": 12,
+              "segmentationUpid": "7570696476616c7565",
+              "segmentationTypeId": 52,
+              "segmentNum": 1,
+              "segmentsExpected": 1,
+              "subSegmentNum": 1,
+              "subSegmentsExpected": 1
+            }
+          }
+        }
+      ]
+    }
+  },
+  "originalName": "scte352"
+}
