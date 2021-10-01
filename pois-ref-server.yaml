@@ -621,6 +621,10 @@ Outputs:
     Description: This is the API endpoint to get/put/delete schedule for SCTE35 triggered switching
     Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ApiStage}/pois/schedule
 
+  ChannelConfigurationAPI:
+    Description: This is the API endpoint to get/put/delete channels in the POIS reference server.
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ApiStage}/pois/channels
+
   ESAMEndpoint:
     Description: This is the ESAM endpoint to configure in your encoders SCC URL field
     Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ApiStage}/esam
