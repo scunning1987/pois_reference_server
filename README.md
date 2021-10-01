@@ -87,6 +87,10 @@ The POIS offers some rudimentary capabilities for SCTE35 signal conditioning and
   - '-' range (ie. if duration is between 15-30). When the operator is range, the **value** MUST have a min integer value, and a max integer value, separated by a hyphen '-'. For example value="2-4"
   - '!=' not equal to (this is useful for filtering/deleting anything that isn't a specific SCTE35 type. ie. if segmentation_upid_type != "9")
 
+
+| Note: If all the rules evaluate to FALSE, the configured **default_behavior** action will apply to the ESAM response |
+|----------|
+
 Here's a sample channel configuration:
 
 ```
