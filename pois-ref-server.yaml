@@ -2,17 +2,14 @@
 #### Author : Scott Cunningham
 ####
 ####
-## To Do List:
-##     Create Layer : XMLTODICT
-##     ADD Layer to Both Lambdas
 
 ## Parameters - User Input
-Parameters:
-
-  Placeholder:
-    Description: placeholder
-    Type: String
-    Default: placeholder
+#Parameters:
+#
+#  Placeholder:
+#    Description: placeholder for now...
+#    Type: String
+#    Default: placeholder
 
 ## Resources
 Resources:
