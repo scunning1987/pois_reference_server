@@ -8,6 +8,7 @@ import xmltodict
 import threefive
 from threefive import Cue
 import copy
+import binascii
 
 LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.INFO)
@@ -46,9 +47,17 @@ def lambda_handler(event, context):
     }
     threefive_scte_format['descriptors'] = {
         'tag':'int',
+        'name':'str',
+        'segmentation_message':'str',
+        'segmentation_upid_type_name':'str',
+        'segmentation_upid_length':'int',
+        'sub_segment_num':'int',
+        'sub_segments_expected':'int',
         'descriptor_length':'int',
         'identifier':'str',
-        'segmentation_event_id':'int',
+        'segmentation_event_id':'str',
+        'segmentation_duration':'int',
+        'segmentation_duration_raw':'int',
         'segmentation_event_cancel_indicator':'bool',
         'program_segmentation_flag':'bool',
         'segmentation_duration_flag':'bool',
@@ -56,9 +65,9 @@ def lambda_handler(event, context):
         'web_delivery_allowed_flag':'bool',
         'no_regional_blackout_flag':'bool',
         'archive_allowed_flag':'bool',
-        'device_restrictions':'int',
+        'device_restrictions':'str',
         'segmentation_upid_type':'int',
-        'segmentation_upid':'int',
+        'segmentation_upid':'str',
         'segmentation_type_id':'int',
         'segment_num':'int',
         'segments_expected':'int',
@@ -184,12 +193,18 @@ def lambda_handler(event, context):
     def scte_rule_checker(rule_condition_property,rule_condition_value,rule_condition_operator,scte_35_dict):
         # ['=','>','<','-','!=']
 
-
         scte35_property_value = ""
         for main_key in scte_35_dict:
-            for property_key in scte_35_dict[main_key]:
-                if property_key == rule_condition_property:
-                    scte35_property_value = scte_35_dict[main_key][property_key]
+            if isinstance(scte_35_dict[main_key],list):
+                for desc_number in range(0,len(scte_35_dict[main_key])):
+                    for property_key in scte_35_dict[main_key][desc_number]:
+                        if property_key == rule_condition_property:
+                            scte35_property_value = scte_35_dict[main_key][desc_number][property_key]
+            else:
+                for property_key in scte_35_dict[main_key]:
+                    if property_key == rule_condition_property:
+                        scte35_property_value = scte_35_dict[main_key][property_key]
+
 
         rule_condition_value = value_type_validator(rule_condition_property,rule_condition_value)
 
@@ -318,7 +333,7 @@ def lambda_handler(event, context):
     if "rules" not in dynamodb_to_json:
         LOGGER.debug("Channel has no SCTE rules, sending default behavior")
         action = dynamodb_to_json['default_behavior']
-        custom_status_code['@classCode'] = 3
+        custom_status_code['@classCode'] = 0
         custom_status_code['core:Note'] = "No conditioning rules at POIS, using default behavior"
 
     else:
@@ -338,7 +353,6 @@ def lambda_handler(event, context):
         # Iterate through rules
         scte35notdeleted = True
         custom_status_code_rule_match = ""
-
         for r in range(0,len(dynamodb_to_json['rules'])):
             rule = dynamodb_to_json['rules'][r]
 
@@ -351,16 +365,18 @@ def lambda_handler(event, context):
 
                 rule_check_result = scte_rule_checker(rule_condition_property,rule_condition_value,rule_condition_operator,scte_35_dict) # true false
 
+
                 if rule_check_result:
                     if rule_type == "delete":
                         action = "delete"
                         scte35notdeleted = False
 
                         custom_status_code_rule_match = "matched rule %r" % (str(r))
-                        custom_status_code['@classCode'] = 3
+                        custom_status_code['@classCode'] = 0
                         custom_status_code['core:Note'] = custom_status_code_rule_match
 
                     else: # replace
+
                         # iterate through replace_params and modify scte35 dict
                         action = "replace"
 
@@ -369,8 +385,8 @@ def lambda_handler(event, context):
                         for replace_param_number in range(0,len(rule_params)):
                             rule_param = rule_params[replace_param_number]
                             r_key = list(rule_param.keys())[0]
+
                             r_value = value_type_validator(r_key,rule_param[r_key])
-                            #r_header = ""
 
 
                             for property_header in threefive_scte_format:
@@ -386,22 +402,38 @@ def lambda_handler(event, context):
                                 if not isinstance(scte_35_dict[r_header],list):
                                     scte_35_dict[r_header][r_key] = r_value
                                 else:
-                                    descriptors_dict.update({r_key:r_value})
+
+                                    properties_list = scte_35_dict[r_header]
+
+                                    if len(properties_list) == 0:
+
+                                        descriptors_dict[r_key] = r_value
+
+                                    else:
+
+                                        for p_list in range(0,len(properties_list)):
+                                            properties_list[p_list][r_key] = r_value
+
+
+                                    scte_35_dict[r_header] = properties_list
+
                                     #scte_35_dict[r_header].append(r_key+":"+str(r_value))
                                 custom_status_code_rule_match += "rule %s replace param %s filled ." % (str(r),str(replace_param_number))
                                 if '@classCode' in custom_status_code:
                                     if custom_status_code['@classCode'] != 2:
-                                        custom_status_code['@classCode'] = 3
+                                        custom_status_code['@classCode'] = 0
                                 else:
-                                    custom_status_code['@classCode'] = 3
-                        # add to descriptors
+                                    custom_status_code['@classCode'] = 0
 
-                    scte_35_dict['descriptors'] = [descriptors_dict]
-                    #return scte_35_dict
+                        # add to descriptors
+                        if len(descriptors_dict) > 0:
+
+                            scte_35_dict['descriptors'] = [descriptors_dict]
+
                     # encode scte35
-                    newcue = Cue()
-                    newcue.load(scte_35_dict)
-                    sig_binary_data = newcue.encode()
+                    #return scte_35_dict
+
+
                     try:
                         newcue = Cue()
                         newcue.load(scte_35_dict)
@@ -415,7 +447,7 @@ def lambda_handler(event, context):
 
                 else:
                     action = dynamodb_to_json['default_behavior']
-                    custom_status_code['@classCode'] = 3
+                    custom_status_code['@classCode'] = 0
                     custom_status_code['core:Note'] = "No rule match at POIS, using default behavior"
 
                 scte35notdeleted = False
@@ -437,10 +469,18 @@ def lambda_handler(event, context):
 
     # Create response SPN
     spn = dict()
+    response_main_elements_attributes = {
+        "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+        "@xmlns:sig": "urn:cablelabs:md:xsd:signaling:3.0",
+        "@xmlns:core":"urn:cablelabs:md:xsd:core:3.0",
+        "@xsi:schemaLocation": "urn:cablelabs:iptvservices:esam:xsd:common:1 OC-SP-ESAM- API-I0x-Common.xsd",
+        "@xmlns": "urn:cablelabs:iptvservices:esam:xsd:common:1"
+    }
+
     spn['SignalProcessingNotification'] = response_main_elements_attributes
     spn['SignalProcessingNotification']['ResponseSignal'] = resp_signal
     if len(custom_status_code) > 0:
-        spn['SignalProcessingNotification']['common:StatusCode'] = custom_status_code
+        spn['SignalProcessingNotification']['StatusCode'] = custom_status_code
 
 
     # convert payload to xml for return

@@ -67,8 +67,19 @@ def lambda_handler(event, context):
         'avail_expected':'int'
     }
     threefive_scte_format['descriptors'] = {
-        'segmentation_event_id':'',
-        'segmentation_event_cancel_indicator':'',
+        'tag':'int',
+        'name':'str',
+        'segmentation_message':'str',
+        'segmentation_upid_type_name':'str',
+        'segmentation_upid_length':'int',
+        'sub_segment_num':'int',
+        'sub_segments_expected':'int',
+        'descriptor_length':'int',
+        'identifier':'str',
+        'segmentation_event_id':'int',
+        'segmentation_duration':'int',
+        'segmentation_duration_raw':'int',
+        'segmentation_event_cancel_indicator':'bool',
         'program_segmentation_flag':'bool',
         'segmentation_duration_flag':'bool',
         'delivery_not_restricted_flag':'bool',
@@ -80,7 +91,8 @@ def lambda_handler(event, context):
         'segmentation_upid':'int',
         'segmentation_type_id':'int',
         'segment_num':'int',
-        'segments_expected':'int'
+        'segments_expected':'int',
+        'provider_avail_id':'int'
     }
 
     def dict_path(dicttopopulate,my_dict):
