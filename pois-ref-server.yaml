@@ -379,7 +379,7 @@ Resources:
                           # Upload to S3
                           LOGGER.info("Now uploading %s to S3, Bucket: %s , path: %s" % (file_name,bucket,s3_key))
                           try:
-                              s3_response = s3.put_object(Body=s3_data, Bucket=bucket, Key=s3_key,ContentType=content_type, CacheControl='no-cache', ACL='public-read')
+                              s3_response = s3.put_object(Body=s3_data, Bucket=bucket, Key=s3_key,ContentType=content_type, CacheControl='no-cache')
                               LOGGER.info("Uploaded %s to S3, got response : %s " % (file_name,s3_response) )
                               responseData[file_base_name] = s3_key
                           except Exception as e:
