@@ -11,7 +11,7 @@ It is intended to be used for testing purposes only.
 
 ## Functionality
 The functionality includes:
-* SCTE35 filtering (deleting unwanted,, passing through noop):
+* SCTE35 filtering (deleting unwanted, passing through noop):
     * UPID value
     * segmentation type id (program,network, provider advertisement id,chapter start/stop)
     * splice command type (5,6)
@@ -19,7 +19,7 @@ The functionality includes:
 
 
 * Modify / Replace (free text entry with parameter validation)
-    * splice command type 5 → 6
+    * splice command type 5 → 6 *Will be supported at a later date*
     * modify certain characteristics:
         * example: web_delivery_not_allowed
             * be aware that this may add more metadata to payload that needs to be taken into consideration
