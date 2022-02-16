@@ -63,7 +63,7 @@ The two most important output values are the **ESAMEndpoint** which you will con
 | PUT     | /pois/channels/{channel-name} | Where {channel-name} is the name of your channel, this will create/update the channel configuration in the POIS |
 | DELETE  | /pois/channels/{channel-name} | Where {channel-name} is the name of your channel, this will delete the channel from the POIS database
 
-You can download the POSTman collection for this API set here: https://www.getpostman.com/collections/a1a10cbee581bbf771e9
+You can download the POSTman collection for this API set here: https://www.getpostman.com/collections/f91925ceece614b8486e
 
 * When creating a channel in the API, only 2 properties are required:
     - default_behavior = this can either be **noop** or **delete**
