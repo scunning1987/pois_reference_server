@@ -58,8 +58,8 @@ The two most important output values are the **ESAMEndpoint** which you will con
 
 | Method  | Path             | Description |
 |---------|------------------|-------------|
-| GET     | /pois/channnels  | Returns configuration of all channels in the POIS |
-| GET     | /pois/channnels/{channel-name} | Where {channel-name} is the name of your channel, this will return the configuration of the channel |
+| GET     | /pois/channels  | Returns configuration of all channels in the POIS |
+| GET     | /pois/channels/{channel-name} | Where {channel-name} is the name of your channel, this will return the configuration of the channel |
 | PUT     | /pois/channels/{channel-name} | Where {channel-name} is the name of your channel, this will create/update the channel configuration in the POIS |
 | DELETE  | /pois/channels/{channel-name} | Where {channel-name} is the name of your channel, this will delete the channel from the POIS database
 
