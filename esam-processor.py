@@ -1,6 +1,7 @@
 import json
 import boto3
 import datetime
+import time
 import logging
 import math
 import os
@@ -110,6 +111,8 @@ def lambda_handler(event, context):
     sig_binary_data_type = acq_signal['sig:BinaryData']['@signalType']
     sig_binary_data = acq_signal['sig:BinaryData']['#text']
 
+    LOGGER.info("SCTE35 Received in SPE: %s " % (sig_binary_data))
+
     sig_stream_times = acq_signal['sig:StreamTimes']
 
     ##
@@ -208,6 +211,8 @@ def lambda_handler(event, context):
 
         rule_condition_value = value_type_validator(rule_condition_property,rule_condition_value)
 
+        if scte35_property_value == "":
+            scte35_property_value = 0
 
         if rule_condition_value == "false":
             rule_condition_value = False
@@ -228,6 +233,7 @@ def lambda_handler(event, context):
 
         elif rule_condition_operator == "<":
             if scte35_property_value < rule_condition_value:
+                # if scte35_property_value < rule_condition_value:
                 return True
             else:
                 return False
@@ -332,9 +338,13 @@ def lambda_handler(event, context):
 
     if "rules" not in dynamodb_to_json:
         LOGGER.debug("Channel has no SCTE rules, sending default behavior")
-        action = dynamodb_to_json['default_behavior']
+        try:
+            action = dynamodb_to_json['default_behavior']
+            custom_status_code['core:Note'] = "No conditioning rules at POIS, using default behavior"
+        except:
+            custom_status_code['core:Note'] = "Channel not configured in POIS DB"
         custom_status_code['@classCode'] = 0
-        custom_status_code['core:Note'] = "No conditioning rules at POIS, using default behavior"
+
 
     else:
         LOGGER.debug("Channel has SCTE signal rules, iterating through them now")
@@ -350,11 +360,22 @@ def lambda_handler(event, context):
             custom_status_code['@classCode'] = 2
             custom_status_code['core:Note'] = "Unable to decode inbound SCTE35, using default behavior"
 
+        try:
+            LOGGER.info("SCTE35 type : %s , segTypeId: %s " % (scte_35_dict['info_section']['splice_command_type'],scte_35_dict['descriptors'][0]['segmentation_type_id']))
+        except:
+            LOGGER.debug("Cant obtain type or segtypeid")
+
+        #return scte_35_dict
+
+
         # Iterate through rules
         scte35notdeleted = True
         custom_status_code_rule_match = ""
+
+
         for r in range(0,len(dynamodb_to_json['rules'])):
             rule = dynamodb_to_json['rules'][r]
+
 
             # do a while loop, if we're iterating through the rules but there's alreadby been a delete match, may as well exit for loop
             while scte35notdeleted:
@@ -363,7 +384,9 @@ def lambda_handler(event, context):
                 rule_condition_value = rule['condition']['value']
                 rule_condition_operator = rule['condition']['operator']
 
+
                 rule_check_result = scte_rule_checker(rule_condition_property,rule_condition_value,rule_condition_operator,scte_35_dict) # true false
+
 
 
                 if rule_check_result:
@@ -376,7 +399,6 @@ def lambda_handler(event, context):
                         custom_status_code['core:Note'] = custom_status_code_rule_match
 
                     else: # replace
-
                         # iterate through replace_params and modify scte35 dict
                         action = "replace"
 
@@ -397,7 +419,10 @@ def lambda_handler(event, context):
                                 custom_status_code_rule_match += "rule %s replace param %s failed ." % (str(r),str(replace_param_number))
                                 custom_status_code['@classCode'] = 2
 
+
+
                             else:
+
                                 # replace property in scte35 dict
                                 if not isinstance(scte_35_dict[r_header],list):
                                     scte_35_dict[r_header][r_key] = r_value
@@ -431,19 +456,184 @@ def lambda_handler(event, context):
                             scte_35_dict['descriptors'] = [descriptors_dict]
 
                     # encode scte35
+
                     #return scte_35_dict
 
+                    cue = threefive.Cue()
+                    cmd = threefive.TimeSignal()
+                    cmd.time_specified_flag = True
+                    cmd.pts_time = scte_35_dict['command']['pts_time']
+                    cmd.pts_ticks = scte_35_dict['command']['pts_ticks']
+                    cue.command = cmd
+
+                    cue.info_section.pts_adjustment = scte_35_dict['info_section']['pts_adjustment']
+
+
+                    #tsdescriptor = threefive.SegmentationDescriptor(bytes.fromhex('021D43554549000003E97FC3000120874E0109313133313433353332220101'))
+
+                    tsdescriptor = threefive.SegmentationDescriptor(None)
+                    tsdescriptor.provider_avail_id = 1
+                    tsdescriptor.segmentation_event_id = 1
+                    tsdescriptor.segmentation_duration_flag = True
+                    tsdescriptor.delivery_not_restricted_flag = False
+                    tsdescriptor.web_delivery_allowed_flag = False
+                    tsdescriptor.no_regional_blackout_flag = False
+                    tsdescriptor.archive_allowed_flag = True
+                    tsdescriptor.segmentation_duration = 30
+                    tsdescriptor.segmentation_duration_ticks = 2700000
+                    tsdescriptor.segmentation_upid_type = 9
+                    #tsdescriptor.segmentation_upid_length
+                    tsdescriptor.segmentation_upid = 00
+                    tsdescriptor.segmentation_type_id = 52
+                    tsdescriptor.segment_num = 0
+                    tsdescriptor.segments_expected = 0
+                    tsdescriptor.sub_segment_num = 0
+                    tsdescriptor.sub_segments_expected = 0
+                    #tsdescriptor.
+
+
+                    #     "segmentation_event_id":"None",
+                    #   "segmentation_event_cancel_indicator":"None",
+                    #   "component_count":"None",
+                    #   "program_segmentation_flag":"None",
+                    #   "segmentation_duration_flag":"None",
+                    #   "delivery_not_restricted_flag":"None",
+                    #   "web_delivery_allowed_flag":"None",
+                    #   "no_regional_blackout_flag":"None",
+                    #   "archive_allowed_flag":"None",
+                    #   "device_restrictions":"None",
+                    #   "segmentation_duration":"None",
+                    #   "segmentation_duration_ticks":"None",
+                    #   "segmentation_message":"None",
+                    #   "segmentation_upid_type":"None",
+                    #   "segmentation_upid_type_name":"None",
+                    #   "segmentation_upid_length":"None",
+                    #   "segmentation_upid":"None",
+                    #   "segmentation_type_id":"None",
+                    #   "segment_num":"None",
+                    #   "segments_expected":"None",
+                    #   "sub_segment_num":"None",
+                    #   "sub_segments_expected":"None"
+
+                    # # return str(tsdescriptor)
+                    # tsdescriptor = threefive.SegmentationDescriptor(None)
+                    # tsdescriptordata = {
+                    #           "descriptor_length":0,
+                    #           "name":"Segmentation Descriptor",
+                    #           "identifier":"CUEI",
+                    #         #   "bites":"None",
+                    #           "provider_avail_id":1,
+                    #           "components":[
+
+                    #           ],
+                    #           "segmentation_event_id":"100",
+                    #           "segmentation_event_cancel_indicator":False,
+                    #           "program_segmentation_flag":False,
+                    #           "segmentation_duration_flag":True,
+                    #           "delivery_not_restricted_flag":False,
+                    #           "web_delivery_allowed_flag":False,
+                    #           "no_regional_blackout_flag":False,
+                    #           "archive_allowed_flag":True,
+                    #           "device_restrictions":0,
+                    #           "segmentation_duration":30,
+                    #           "segmentation_duration_ticks":2700000,
+                    #           "segmentation_message":"None",
+                    #           "segmentation_upid_type":9,
+                    #           "segmentation_upid_type_name":"None",
+                    #           "segmentation_upid_length":0,
+                    #           "segmentation_upid":0,
+                    #           "segmentation_type_id":52,
+                    #           "segment_num":0,
+                    #           "segments_expected":0,
+                    #           "sub_segment_num":0,
+                    #           "sub_segments_expected":0
+                    #         }
+
+                    # tsdescriptor.load(tsdescriptordata)
+
+
+                    # cue.descriptors.append(tsdescriptor)
+
+                    cmd=threefive.TimeSignal()
+                    cmd.time_specified_flag=True
+                    cmd.pts_time = scte_35_dict['command']['pts_time']
+                    cmd.break_auto_return = True
+
+                    #cmd.pts_ticks = scte_35_dict['command']['pts_ticks']
+                    cue.info_section.pts_adjustment = scte_35_dict['info_section']['pts_adjustment']
+                    cue.command = cmd
 
                     try:
-                        newcue = Cue()
-                        newcue.load(scte_35_dict)
-                        sig_binary_data = newcue.encode()
+                        segmentation_event_id_scte = scte_35_dict['descriptors'][0]['segmentation_event_id']
 
-                        custom_status_code['core:Note'] = custom_status_code_rule_match
                     except:
-                        action = dynamodb_to_json['default_behavior']
-                        custom_status_code['@classCode'] = 2
-                        custom_status_code['core:Note'] = "Unable to encode new SCTE35, using default behavior"
+                        segmentation_event_id_scte = str(int(time.time()/1000))
+
+                    dscrptr = threefive.SegmentationDescriptor(None)
+                    dscrptr.tag = 2
+                    dscrptr.descriptor_length = 23
+                    dscrptr.name = "Segmentation Descriptor"
+                    dscrptr.identifier = "CUEI"
+                    dscrptr.components = []
+                    dscrptr.segmentation_event_id = segmentation_event_id_scte
+                    dscrptr.segmentation_event_cancel_indicator = False
+                    dscrptr.program_segmentation_flag = True
+                    dscrptr.segmentation_duration_flag = True
+                    dscrptr.segmentation_duration = 30.0
+
+                    dscrptr.delivery_not_restricted_flag = False
+                    dscrptr.web_delivery_allowed_flag = False
+                    dscrptr.no_regional_blackout_flag = False
+                    dscrptr.archive_allowed_flag = True
+                    dscrptr.device_restrictions = "No Restrictions"
+                    dscrptr.segmentation_message = "Provider Placement Opportunity Start"
+                    dscrptr.segmentation_upid_type = 9
+                    dscrptr.segmentation_upid_type_name = "Deprecated"
+                    dscrptr.segmentation_upid_length = 0
+                    dscrptr.segmentation_upid = ""
+                    dscrptr.segmentation_type_id = 52
+                    dscrptr.segment_num = 0
+                    dscrptr.sub_segments_expected = 0
+                    dscrptr.sub_segment_num = 0
+                    dscrptr.segments_expected = 1
+
+                    #dscrptr.load(descriptors)
+
+
+
+                    cue.descriptors.append(dscrptr)
+
+
+
+                    #return str(cue.show())
+                    # binary_data = cue.encode()
+
+                    # sig_binary_data = binary_data
+
+                    scte_start = True
+                    try:
+                        if int(scte_35_dict['descriptors'][0]['segmentation_type_id']) == 53:
+                            scte_start = False
+                    except:
+                        LOGGER.debug("Nothing")
+
+                    if scte_start:
+                        try:
+                            #newcue = Cue()
+                            #newcue.load(scte_35_dict)
+                            sig_binary_data = cue.encode()
+                            #sig_binary_data = newcue.encode()
+                            LOGGER.info("SCTE35 encoded: %s " % (sig_binary_data))
+
+                            custom_status_code['core:Note'] = custom_status_code_rule_match
+                        except Exception as e:
+                            LOGGER.warning("SCTE35 encode exception : %s " % (e))
+                            action = dynamodb_to_json['default_behavior']
+                            custom_status_code['@classCode'] = 2
+                            custom_status_code['core:Note'] = "Unable to encode new SCTE35, using default behavior"
+                    else:
+                        LOGGER.info("SCTE35 encoded: %s " % (sig_binary_data))
+
 
                 else:
                     action = dynamodb_to_json['default_behavior']
