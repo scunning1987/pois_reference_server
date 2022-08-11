@@ -461,9 +461,16 @@ def lambda_handler(event, context):
 
                     cue = threefive.Cue()
                     cmd = threefive.TimeSignal()
-                    cmd.time_specified_flag = True
-                    cmd.pts_time = scte_35_dict['command']['pts_time']
-                    cmd.pts_ticks = scte_35_dict['command']['pts_ticks']
+
+
+                    if scte_35_dict['command']['splice_immediate_flag'] == True:
+                        cmd.splice_immediate_flag = True
+                    else:
+                        cmd.time_specified_flag = True
+                        cmd.pts_time = scte_35_dict['command']['pts_time']
+                        cmd.pts_ticks = scte_35_dict['command']['pts_ticks']
+
+
                     cue.command = cmd
 
                     cue.info_section.pts_adjustment = scte_35_dict['info_section']['pts_adjustment']
@@ -555,9 +562,17 @@ def lambda_handler(event, context):
                     # cue.descriptors.append(tsdescriptor)
 
                     cmd=threefive.TimeSignal()
-                    cmd.time_specified_flag=True
-                    cmd.pts_time = scte_35_dict['command']['pts_time']
-                    cmd.break_auto_return = True
+
+                    if scte_35_dict['command']['splice_immediate_flag'] == True:
+                        cmd.splice_immediate_flag = True
+                        cmd.time_specified_flag = False
+                    else:
+                        cmd.time_specified_flag = True
+                        cmd.pts_time = scte_35_dict['command']['pts_time']
+                        cmd.pts_ticks = scte_35_dict['command']['pts_ticks']
+                        cmd.break_auto_return = True
+
+
 
                     #cmd.pts_ticks = scte_35_dict['command']['pts_ticks']
                     cue.info_section.pts_adjustment = scte_35_dict['info_section']['pts_adjustment']
@@ -566,7 +581,7 @@ def lambda_handler(event, context):
                     try:
                         segmentation_event_id_scte = scte_35_dict['descriptors'][0]['segmentation_event_id']
 
-                    except:
+                    except Exception as e:
                         segmentation_event_id_scte = str(int(time.time()/1000))
 
                     dscrptr = threefive.SegmentationDescriptor(None)
