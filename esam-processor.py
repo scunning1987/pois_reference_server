@@ -713,6 +713,7 @@ def lambda_handler(event, context):
 
                                 cue.command = cmd
 
+
                                 try:
                                     segmentation_event_id_scte = scte_35_dict['descriptors'][0]['segmentation_event_id']
 
@@ -749,9 +750,12 @@ def lambda_handler(event, context):
 
                                 cue.descriptors.append(dscrptr)
 
+                                #return cue.encode()
+
                                 try:
                                     sig_binary_data = cue.encode()
                                     LOGGER.info("SCTE35 encoded: %s " % (sig_binary_data))
+                                    custom_status_code['@classCode'] = 0
                                     custom_status_code['core:Note'] = "Matched on priority descriptor"
                                     action = "replace"
                                 except Exception as e:
@@ -806,10 +810,23 @@ def lambda_handler(event, context):
 
                     pts_offset = int(scte_35_dict['info_section']['pts_adjustment_ticks'])
                     pts_offset_seconds = (pts_offset % (2 ** 33)) / 90000
-                    expiry_time = time_now + scte_duration + pts_offset_seconds
+                    time_now = int(datetime.datetime.utcnow().timestamp())
+                    expiry_time = str(int(time_now + scte_duration + pts_offset_seconds))
+
+                    item = {
+                        "channelid": {
+                            "S": acquisition_point_id
+                        },
+                        "signal_expiry_time": {
+                            "S": expiry_time
+                        }
+                    }
 
                     # write to DB
-                    dbUpdateState(statedb,item,acquisitionPointIdentity)
+                    db_update_response = dbUpdateState(statedb,item,acquisition_point_id)
+
+                    LOGGER.info("Updated DB lock on channel %s to timestamp %s: %s" % (acquisition_point_id,expiry_time,str(db_update_response)))
+
 
 
                 except Exception as e:
