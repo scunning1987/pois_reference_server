@@ -3,6 +3,7 @@
 | Date         | Version | Update Notes |
 |--------------|---------|--------------|
 | 2020-09-30   | 1.0.27  | Initial release containing support for ad rules only. API configuration only - See API section for details
+| 2023-03-17 | 1.1.0 | * Added support for time signal outputs<br />* Added support for segmentation descriptor prioritization<br />* Added logic for state lock
 
 ## Overview
 This is a POIS reference server capable of interacting with a transcoder using ESAM protocol.
