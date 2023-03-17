@@ -47,6 +47,7 @@ Use [this CloudFormation template](pois-ref-server.yaml) to deploy the solution.
 * Amazon API Gateway REST API
 * DynamoDB Channels Database
 * DynamoDB Schedule Database
+* DynamoDB State Database
 * Amazon S3 ****bucket deployed to host UI ... later phase*
 * AWS IAM Role & Policy creation for Lambda Functions
 
