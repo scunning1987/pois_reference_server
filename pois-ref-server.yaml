@@ -199,6 +199,7 @@ Resources:
         Variables:
           CHANNELDB: !Ref POISDatabaseChannel
           SCHEDULEDB: !Ref POISDatabaseSchedule
+          STATEDB: !Ref POISDatabaseState
       Tags:
         - Key: StackName
           Value: !Ref AWS::StackName
