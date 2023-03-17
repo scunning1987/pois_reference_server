@@ -67,14 +67,15 @@ You can download the POSTman collection for this API set here: https://www.getpo
 
 * When creating a channel in the API, only 2 properties are required:
     - default_behavior = this can either be **noop** or **delete**
-    - esam_version = currently this value has to be **2016**
+    - esam_version = currently this value has to be **2013**
 
 ## Creating SCTE35 Rules
 The POIS offers some rudimentary capabilities for SCTE35 signal conditioning and deleting. Here are some tips when configuring your rules:
 * The rules are processed in order, starting with the first rule in the list submitted via the API
 * The rule format is as follows:
   - You first specify an action type. What do you want to happen if the rule evaluates to TRUE (supported actions: replace, delete)
-  - Then comes the condition; what do you want to evaluate. Currently the application supports simple checks, ie. splice_command_type = 5 (splice_command_type is the **property**, 5 is the **value**, and the operator is **=**)
+  - Then comes the condition; what do you want to evaluate. Currently, the application supports simple checks, ie. splice_command_type = 5 (splice_command_type is the **property**, 5 is the **value**, and the operator is **=**)
+    - It is possibly to use multiple comma separated values that will be evaluated in order. ie. "value":"32,48,52"
   - For **replace** actions, you also need to submit with the json a **replace_params** list. If the evaluation of the rule is True, then the SCTE properties listed in the **replace_params** list will all be used to modify the SCTE35 binary  
 * You can mix and match action types in your rules. IE. you can have a DELETE rule to delete all splice_command_type 5 signals, then have a subsequent rule to modify duration  
 * It's recommended that any DELETE rules should be at earlier indexes in list than REPLACE rules
@@ -86,7 +87,10 @@ The POIS offers some rudimentary capabilities for SCTE35 signal conditioning and
   - '<' less than
   - '-' range (ie. if duration is between 15-30). When the operator is range, the **value** MUST have a min integer value, and a max integer value, separated by a hyphen '-'. For example value="2-4"
   - '!=' not equal to (this is useful for filtering/deleting anything that isn't a specific SCTE35 type. ie. if segmentation_upid_type != "9")
-
+* Mode, this is optional and accepts values: "stateful" or "stateless"
+  - stateful. The POIS will write to a DB for a rule it has matched with a replace action. Any subsequent SCTE signal received in the active window of the 'replaced' SCTE signal will be **deleted**
+  - stateless. Each ESAM decision will be made independently
+* Descriptor Priority, this is in the case of receiving a SCTE35 with multiple segmentation descriptors. Setting a comma delimited priority for which descriptor settings to preserve. ie. "32,34,48"
 
 | Note: If all the rules evaluate to FALSE, the configured **default_behavior** action will apply to the ESAM response |
 |----------|
@@ -96,7 +100,9 @@ Here's a sample channel configuration:
 ```
 {
   "default_behavior": "noop",
-  "esam_version": "2016",
+  "esam_version": "2013",
+  "descriptor_priority":"",
+  "mode":"stateless",
   "rules": [
     {
       "type": "delete",

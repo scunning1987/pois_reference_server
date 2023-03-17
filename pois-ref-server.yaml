@@ -84,6 +84,7 @@ Resources:
             Resource:
               - !GetAtt POISDatabaseChannel.Arn
               - !GetAtt POISDatabaseSchedule.Arn
+              - !GetAtt POISDatabaseState.Arn
 
     DependsOn: S3Bucket
 
@@ -130,6 +131,18 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: !Sub POIS-schedules-${AWS::StackName}
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: channelid
+          KeyType: HASH
+      AttributeDefinitions:
+        - AttributeName: channelid
+          AttributeType: S
+
+  POISDatabaseState:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub POIS-state-${AWS::StackName}
       BillingMode: PAY_PER_REQUEST
       KeySchema:
         - AttributeName: channelid
@@ -215,6 +228,7 @@ Resources:
           BUCKET: !Ref S3Bucket
           CHANNELDB: !Ref POISDatabaseChannel
           SCHEDULEDB: !Ref POISDatabaseSchedule
+          STATEDB: !Ref POISDatabaseState
       Tags:
         - Key: StackName
           Value: !Ref AWS::StackName
